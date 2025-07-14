@@ -1,107 +1,235 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Malla Curricular - Ingeniería Civil</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
-    #graph { width: 100vw; height: 100vh; }
-    .node { cursor: pointer; fill: #4f46e5; stroke: #fff; stroke-width: 2px; }
-    .completed { fill: #10b981 !important; }
-    .label { font-size: 12px; fill: #000; text-anchor: middle; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Malla Interactiva Ingeniería Civil UPC</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f9f9f9;
+  }
+  h2 {
+    border-bottom: 2px solid #333;
+    padding-bottom: 5px;
+    margin-top: 40px;
+    color: #222;
+  }
+  .cycle {
+    margin-bottom: 30px;
+  }
+  .course {
+    display: inline-block;
+    background-color: #90caf9;
+    color: #003366;
+    padding: 10px 15px;
+    margin: 8px 8px 8px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: bold;
+    min-width: 150px;
+    text-align: center;
+    transition: background-color 0.3s ease;
+  }
+  .course.locked {
+    background-color: #cfe3fc;
+    color: #999;
+    cursor: not-allowed;
+    text-decoration: none !important;
+  }
+  .course.completed {
+    background-color: #999;
+    color: #eee;
+    text-decoration: line-through;
+    cursor: pointer;
+  }
+  .course[contenteditable="true"] {
+    border: 2px dashed #555;
+    background-color: #fff;
+    color: #222;
+    cursor: text;
+  }
+</style>
 </head>
 <body>
-  <svg id="graph"></svg>
-  <script src="https://d3js.org/d3.v6.min.js"></script>
-  <script>
-    const width = window.innerWidth;
-    const height = window.innerHeight;
 
-    const svg = d3.select("#graph")
-      .attr("width", width)
-      .attr("height", height);
+<h1>Malla Curricular Interactiva - Ingeniería Civil UPC</h1>
 
-    fetch('data.json')
-      .then(response => response.json())
-      .then(data => {
-        const nodes = data.nodes.map(d => ({...d}));
-        const links = [];
-        const nodeById = Object.fromEntries(nodes.map(d => [d.id, d]));
-        nodes.forEach(node => {
-          if (node.prerequisites) {
-            node.prerequisites.forEach(pr => {
-              links.push({ source: pr, target: node.id });
-            });
-          }
-        });
+<p><small>Haz clic en un curso para marcar como completado. Doble clic para editar el nombre.</small></p>
 
-        const simulation = d3.forceSimulation(nodes)
-          .force("link", d3.forceLink(links).id(d => d.id).distance(120))
-          .force("charge", d3.forceManyBody().strength(-400))
-          .force("center", d3.forceCenter(width / 2, height / 2));
+<div id="malla"></div>
 
-        const link = svg.append("g")
-          .selectAll("line")
-          .data(links)
-          .enter().append("line")
-          .attr("stroke", "#999")
-          .attr("stroke-opacity", 0.6)
-          .attr("stroke-width", 2);
+<script>
+const cursos = [
+  // Ciclo 1
+  {id:'C01', nombre:'Aprendizaje Estratégico y Liderazgo', ciclo:1, prereqs:[]},
+  {id:'C02', nombre:'Crítica y Comunicación', ciclo:1, prereqs:[]},
+  {id:'C03', nombre:'Introducción a la Ingeniería Civil', ciclo:1, prereqs:[]},
+  {id:'C04', nombre:'Matemática Básica', ciclo:1, prereqs:[]},
+  {id:'C05', nombre:'Pensamiento Crítico Aplicado', ciclo:1, prereqs:[]},
+  {id:'C06', nombre:'Sistemas y Sociedad', ciclo:1, prereqs:[]},
 
-        const node = svg.append("g")
-          .selectAll("circle")
-          .data(nodes)
-          .enter().append("circle")
-          .attr("r", 30)
-          .attr("class", d => "node" + (d.completed ? " completed" : ""))
-          .on("click", function(event, d) {
-            d.completed = !d.completed;
-            d3.select(this).classed("completed", d.completed);
-          })
-          .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+  // Ciclo 2
+  {id:'C07', nombre:'Cálculo I', ciclo:2, prereqs:['C04']},
+  {id:'C08', nombre:'Dibujo Asistido por el Computador', ciclo:2, prereqs:['C04']},
+  {id:'C09', nombre:'Química', ciclo:2, prereqs:['C04']},
+  {id:'C10', nombre:'Seminario de Investigación Académica', ciclo:2, prereqs:['C02']},
+  {id:'C11', nombre:'Electivo', ciclo:2, prereqs:[]},
 
-        const label = svg.append("g")
-          .selectAll("text")
-          .data(nodes)
-          .enter().append("text")
-          .attr("class", "label")
-          .text(d => d.name);
+  // Ciclo 3
+  {id:'C12', nombre:'Cálculo II', ciclo:3, prereqs:['C07']},
+  {id:'C13', nombre:'Estadística', ciclo:3, prereqs:['C07']},
+  {id:'C14', nombre:'Física I', ciclo:3, prereqs:['C07']},
+  {id:'C15', nombre:'Materiales de Construcción', ciclo:3, prereqs:['C03','C04','C09']},
+  {id:'C16', nombre:'Topografía', ciclo:3, prereqs:['C08','C04']},
 
-        simulation.on("tick", () => {
-          link.attr("x1", d => d.source.x)
-              .attr("y1", d => d.source.y)
-              .attr("x2", d => d.target.x)
-              .attr("y2", d => d.target.y);
+  // Ciclo 4
+  {id:'C17', nombre:'Ecuaciones Diferenciales y Álgebra Lineal', ciclo:4, prereqs:['C12']},
+  {id:'C18', nombre:'Estática', ciclo:4, prereqs:['C14']},
+  {id:'C19', nombre:'Física II', ciclo:4, prereqs:['C14']},
+  {id:'C20', nombre:'Tecnología del Concreto', ciclo:4, prereqs:['C15']},
+  {id:'C21', nombre:'Electivo', ciclo:4, prereqs:[]},
 
-          node.attr("cx", d => d.x)
-              .attr("cy", d => d.y);
+  // Ciclo 5
+  {id:'C22', nombre:'Construcción I', ciclo:5, prereqs:['C13','C20']},
+  {id:'C23', nombre:'Dinámica', ciclo:5, prereqs:['C13','C18']},
+  {id:'C24', nombre:'Ingeniería de Carreteras', ciclo:5, prereqs:['C13','C16']},
+  {id:'C25', nombre:'Mecánica de Materiales', ciclo:5, prereqs:['C12','C18']},
+  {id:'C26', nombre:'Mecánica de Suelos', ciclo:5, prereqs:['C12','C18']},
 
-          label.attr("x", d => d.x)
-               .attr("y", d => d.y + 4);
-        });
+  // Ciclo 6
+  {id:'C27', nombre:'Análisis Estructural', ciclo:6, prereqs:['C25']},
+  {id:'C28', nombre:'Análisis Numérico para Ingenieros Civil', ciclo:6, prereqs:['C23','C17']},
+  {id:'C29', nombre:'Ingeniería de Cimentaciones', ciclo:6, prereqs:['C26']},
+  {id:'C30', nombre:'Mecánica de Fluidos', ciclo:6, prereqs:['C23','C17']},
+  {id:'C31', nombre:'Modelación de Edificaciones', ciclo:6, prereqs:['C22']},
 
-        function dragstarted(event, d) {
-          if (!event.active) simulation.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        }
+  // Ciclo 7
+  {id:'C32', nombre:'Comportamiento y Diseño en Concreto', ciclo:7, prereqs:['C27']},
+  {id:'C33', nombre:'Construcción II', ciclo:7, prereqs:['C31']},
+  {id:'C34', nombre:'Costos y Presupuestos', ciclo:7, prereqs:['C22']},
+  {id:'C35', nombre:'Hidráulica de Canales', ciclo:7, prereqs:['C30']},
+  {id:'C36', nombre:'Ingeniería de Tránsito', ciclo:7, prereqs:['C24','C26']},
+  {id:'C37', nombre:'Electivo', ciclo:7, prereqs:[]},
 
-        function dragged(event, d) {
-          d.fx = event.x;
-          d.fy = event.y;
-        }
+  // Ciclo 8
+  {id:'C38', nombre:'Planificación y Control de Obras', ciclo:8, prereqs:['C34']},
+  {id:'C39', nombre:'Seminario de Investigación Académica', ciclo:8, prereqs:[]},
+  {id:'C40', nombre:'Taller de Tesis', ciclo:8, prereqs:[]},
+  {id:'C41', nombre:'Electivo', ciclo:8, prereqs:[]},
 
-        function dragended(event, d) {
-          if (!event.active) simulation.alphaTarget(0);
-          d.fx = null;
-          d.fy = null;
-        }
-      });
-  </script>
+  // Ciclo 9
+  {id:'C42', nombre:'Gerencia de Proyectos de Construcción', ciclo:9, prereqs:[]},
+  {id:'C43', nombre:'Ingeniería Sismo-Resistente', ciclo:9, prereqs:[]},
+  {id:'C44', nombre:'Productividad en Obras', ciclo:9, prereqs:[]},
+  {id:'C45', nombre:'Trabajo de Investigación I', ciclo:9, prereqs:[]},
+  {id:'C46', nombre:'Electivo', ciclo:9, prereqs:[]},
+
+  // Ciclo 10
+  {id:'C47', nombre:'CTI Trabajo De Investigación II', ciclo:10, prereqs:[]},
+  {id:'C48', nombre:'Electivo', ciclo:10, prereqs:[]}
+];
+
+const STORAGE_KEY = 'malla_completed';
+const STORAGE_EDIT_KEY = 'malla_names';
+
+let completed = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
+let editedNames = JSON.parse(localStorage.getItem(STORAGE_EDIT_KEY)) || {};
+
+function puedeTomarCurso(curso) {
+  return curso.prereqs.every(p => completed.has(p));
+}
+
+function actualizarVista() {
+  for (let curso of cursos) {
+    const btn = document.getElementById(curso.id);
+    if (!btn) continue;
+    // Nombre editado
+    btn.textContent = editedNames[curso.id] || curso.nombre;
+
+    if (completed.has(curso.id)) {
+      btn.classList.add('completed');
+      btn.classList.remove('locked');
+      btn.style.pointerEvents = 'auto';
+    } else if (puedeTomarCurso(curso)) {
+      btn.classList.remove('locked');
+      btn.classList.remove('completed');
+      btn.style.pointerEvents = 'auto';
+    } else {
+      btn.classList.add('locked');
+      btn.classList.remove('completed');
+      btn.style.pointerEvents = 'none';
+    }
+  }
+}
+
+function toggleCurso(e) {
+  const id = e.target.id;
+  if (completed.has(id)) {
+    completed.delete(id);
+  } else if (puedeTomarCurso(cursos.find(c => c.id === id))) {
+    completed.add(id);
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...completed]));
+  actualizarVista();
+}
+
+function editarNombre(e) {
+  const btn = e.target;
+  btn.setAttribute('contenteditable', 'true');
+  btn.focus();
+
+  // Seleccionar todo el texto
+  document.execCommand('selectAll', false, null);
+
+  // Al perder foco, guardar nombre editado
+  btn.onblur = () => {
+    btn.removeAttribute('contenteditable');
+    const id = btn.id;
+    editedNames[id] = btn.textContent.trim() || cursos.find(c => c.id === id).nombre;
+    localStorage.setItem(STORAGE_EDIT_KEY, JSON.stringify(editedNames));
+    actualizarVista();
+  };
+
+  // Evitar salto de línea al presionar Enter
+  btn.onkeydown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      btn.blur();
+    }
+  };
+}
+
+function crearMalla() {
+  const cont = document.getElementById('malla');
+  cont.innerHTML = '';
+  let cicloActual = 0;
+  for (let curso of cursos) {
+    if (curso.ciclo !== cicloActual) {
+      cicloActual = curso.ciclo;
+      const h2 = document.createElement('h2');
+      h2.textContent = `Ciclo ${cicloActual}`;
+      cont.appendChild(h2);
+      const div = document.createElement('div');
+      div.classList.add('cycle');
+      div.id = `cycle-${cicloActual}`;
+      cont.appendChild(div);
+    }
+    const contCiclo = document.getElementById(`cycle-${cicloActual}`);
+    const btn = document.createElement('button');
+    btn.textContent = editedNames[curso.id] || curso.nombre;
+    btn.id = curso.id;
+    btn.classList.add('course');
+    btn.onclick = toggleCurso;
+    btn.ondblclick = editarNombre;
+    contCiclo.appendChild(btn);
+  }
+  actualizarVista();
+}
+
+window.onload = crearMalla;
+</script>
 </body>
 </html>
