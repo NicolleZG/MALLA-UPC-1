@@ -1,0 +1,68 @@
+{
+  "nodes": [
+    {
+      "id": "mate",
+      "name": "Matem\u00e1tica B\u00e1sica",
+      "completed": false,
+      "prerequisites": []
+    },
+    {
+      "id": "cal1",
+      "name": "C\u00e1lculo I",
+      "completed": false,
+      "prerequisites": [
+        "mate"
+      ]
+    },
+    {
+      "id": "cal2",
+      "name": "C\u00e1lculo II",
+      "completed": false,
+      "prerequisites": [
+        "cal1"
+      ]
+    },
+    {
+      "id": "fis1",
+      "name": "F\u00edsica I",
+      "completed": false,
+      "prerequisites": [
+        "cal1"
+      ]
+    },
+    {
+      "id": "fis2",
+      "name": "F\u00edsica II",
+      "completed": false,
+      "prerequisites": [
+        "fis1"
+      ]
+    },
+    {
+      "id": "esta",
+      "name": "Est\u00e1tica",
+      "completed": false,
+      "prerequisites": [
+        "fis1"
+      ]
+    },
+    {
+      "id": "dinam",
+      "name": "Din\u00e1mica",
+      "completed": false,
+      "prerequisites": [
+        "esta",
+        "cal2"
+      ]
+    },
+    {
+      "id": "mats",
+      "name": "Materiales de Construcci\u00f3n",
+      "completed": false,
+      "prerequisites": [
+        "mate",
+        "fis1"
+      ]
+    }
+  ]
+}
